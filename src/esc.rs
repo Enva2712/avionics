@@ -30,9 +30,9 @@ impl<'a> ESC<'a> {
             pwm_driver,
         };
         me.set_speed(0)?;
-        me.tween_to(100, Duration::from_millis(2000))?;
+        me.tween_to(100, Duration::from_secs(2))?;
         sleep(Duration::from_secs(1));
-        me.tween_to(0, Duration::from_millis(3000))?;
+        me.tween_to(0, Duration::from_secs(3))?;
         sleep(Duration::from_secs(1));
 
         Ok(me)
