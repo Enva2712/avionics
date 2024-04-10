@@ -14,7 +14,6 @@ fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
     let mut peripherals = Peripherals::take()?;
-    /*
     let d = I2cDriver::new(
         peripherals.i2c0,
         peripherals.pins.gpio21, // data
@@ -27,21 +26,18 @@ fn main() -> anyhow::Result<()> {
 
     let mut ac = Mpu9250::marg_default(d, &mut Ets).expect("Failed to initialize IMU");
 
-    for _ in 1..50 {
+    for _ in 1..5 {
         let a = ac.all::<[f32; 3]>().unwrap();
         println!("{:?}", a);
     }
-    */
 
     sleep(Duration::from_secs(2)); // gives escs time to prepare
 
-    /*
     let mut left_motor = ESC::setup(
         &mut peripherals.pins.gpio32,
         &mut peripherals.ledc.timer0,
         &mut peripherals.ledc.channel0,
     )?;
-    */
     let mut right_motor = ESC::setup(
         &mut peripherals.pins.gpio33,
         &mut peripherals.ledc.timer1,
@@ -50,8 +46,11 @@ fn main() -> anyhow::Result<()> {
 
     // left_motor.set_speed(10)?;
     for i in (5..=40).step_by(5) {
-        right_motor.tween_to(i, Duration::from_secs(2))?;
+        right_motor.set_speed(i)?;
+        left_motor.set_speed(i)?;
+        sleep(Duration::from_secs(2));
         right_motor.set_speed(0)?;
+        left_motor.set_speed(0)?;
         sleep(Duration::from_secs(2));
     }
 
