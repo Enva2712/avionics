@@ -15,6 +15,9 @@ opt-level = "z"
 
 [features]
 default = ["std", "embassy", "esp-idf-svc/native"]
+# When the system is ready to attach an actual IMU, this line allows for the IMU
+# to be enabled.
+imu = ["dep:mpu9250"]
 
 pio = ["esp-idf-svc/pio"]
 std = ["alloc", "esp-idf-svc/binstart", "esp-idf-svc/std"]
@@ -26,7 +29,9 @@ embassy = ["esp-idf-svc/embassy-sync", "esp-idf-svc/critical-section", "esp-idf-
 [dependencies]
 log = { version = "0.4", default-features = false }
 esp-idf-svc = { version = "0.48", default-features = false }
-mpu9250 = { version = "0.25.0", features = ["i2c"] }
+# When system is ready to attach actual IMU, this line allows for IMU to be
+# enabled.
+mpu9250 = { version = "0.25.0", features = ["i2c"], optional = true }
 anyhow = "1.0.79"
 
 [build-dependencies]

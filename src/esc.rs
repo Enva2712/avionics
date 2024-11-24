@@ -51,6 +51,9 @@ impl<'a> ESC<'a> {
         return (duty - unit) * 100 / unit;
     }
 
+    //---------------------------------------------------------------------------------------------
+    /// Smoothly transition ESC's speed from current value to target percentage.
+    //---------------------------------------------------------------------------------------------
     pub fn tween_to(&mut self, percent: u32, d: Duration) -> Result<(), EspError> {
         let cur = self.get_speed();
         let delta = percent.abs_diff(cur);
