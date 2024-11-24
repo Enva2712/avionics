@@ -1,5 +1,3 @@
-use crate::esc::ESC;
-
 use esp_idf_svc::hal::{
     gpio::OutputPin,
     ledc::{config::TimerConfig, LedcChannel, LedcDriver, LedcTimer, LedcTimerDriver, Resolution},
@@ -7,79 +5,40 @@ use esp_idf_svc::hal::{
     prelude::*,
     sys::EspError,
 };
-use std::{thread::sleep, time::Duration};
-
-pub enum ServoFrequency {
-    Standard50Hz,    // Most common for RC servos
-    Fast100Hz,       // Faster response
-    Ultrafast333Hz,  // High-speed digital servos
+pub struct Servo<'a> {
+    pwm_driver: LedcDriver<'a>,
+    timer_conf: TimerConfig,
 }
 
-impl ServoFrequency {
-    fn to_hz(&self) -> u32 {
-        match self {
-            ServoFrequency::Standard50Hz => 50,
-            ServoFrequency::Fast100Hz => 100,
-            ServoFrequency::Ultrafast333Hz => 333,
-        }
+impl<'a> Servo<'a> {
+    // TODO: async setup
+    pub fn new<P: OutputPin, T: LedcTimer, C: LedcChannel>(
+        pin: &'a mut impl Peripheral<P = P>,
+        timer: &'a mut impl Peripheral<P = T>,
+        chan: &'a mut impl Peripheral<P = C>,
+    ) -> Result<Self, EspError> {
+        let timer_conf = TimerConfig::default()
+            .frequency(50.Hz().into())
+            .resolution(Resolution::Bits14);
+        let td = LedcTimerDriver::new(timer, &timer_conf)?;
+        let pwm_driver = LedcDriver::new(chan, td, pin)?;
+
+        Ok(Self {
+            timer_conf,
+            pwm_driver,
+        })
     }
-}
 
-#[derive(Debug, Clone, Copy)]
-pub enum ServoResolution {
-    Low,      // Range 0-1023
-    Medium,   // Range 0-4095
-    High,     // Range 0-16383
-}
-
-impl ServoResolution {
-    fn to_resolution(&self) -> Resolution {
-        match self {
-            ServoResolution::Low => Resolution::Bits10,
-            ServoResolution::Medium => Resolution::Bits12,
-            ServoResolution::High => Resolution::Bits14,
-        }
+    pub fn set_pos(&mut self, percent: u32) -> Result<(), EspError> {
+        let unit = self.timer_conf.resolution.max_duty() / 20;
+        let d = unit + (percent * unit) / 100;
+        self.pwm_driver.set_duty(d)?;
+        Ok(())
     }
-}
 
-pub fn setup_servo<'a, P: OutputPin, T: LedcTimer, C: LedcChannel>(
-    pin: &'a mut impl Peripheral<P = P>,
-    timer: &'a mut impl Peripheral<P = T>,
-    chan: &'a mut impl Peripheral<P = C>,
-    freq: ServoFrequency,
-    res: ServoResolution,
-) -> Result<ESC<'a>, EspError> {
-    let timer_conf = TimerConfig::default()
-        .frequency(freq.to_hz().Hz().into())
-        .resolution(res.to_resolution());
-        
-    ESC::setup(pin, timer, chan)
-}
-
-pub fn setup_left_servo<'a>(
-    pin: &'a mut impl Peripheral<P = impl OutputPin>,
-    timer: &'a mut impl Peripheral<P = impl LedcTimer>,
-    channel: &'a mut impl Peripheral<P = impl LedcChannel>,
-) -> Result<ESC<'a>, EspError> {
-    setup_servo(
-        pin,
-        timer,
-        channel,
-        ServoFrequency::Standard50Hz,
-        ServoResolution::High,
-    )
-}
-
-pub fn setup_right_servo<'a>(
-    pin: &'a mut impl Peripheral<P = impl OutputPin>,
-    timer: &'a mut impl Peripheral<P = impl LedcTimer>,
-    channel: &'a mut impl Peripheral<P = impl LedcChannel>,
-) -> Result<ESC<'a>, EspError> {
-    setup_servo(
-        pin,
-        timer,
-        channel,
-        ServoFrequency::Standard50Hz,
-        ServoResolution::High,
-    )
+    pub fn get_pos(&self) -> u32 {
+        let duty = self.pwm_driver.get_duty();
+        let unit = self.timer_conf.resolution.max_duty() / 20;
+        return (duty - unit) * 100 / unit;
+    }
 }
